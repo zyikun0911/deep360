@@ -1,233 +1,23 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authApi, AuthResponse } from '@/services/api';
-import { User } from '@/types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
 }
 
-type AuthAction =
-  | { type: 'AUTH_START' }
-  | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
-  | { type: 'AUTH_FAILURE'; payload: string }
-  | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: User }
-  | { type: 'CLEAR_ERROR' };
-
-interface AuthContextType extends AuthState {
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: {
-    username: string;
-    email: string;
-    password: string;
-    plan?: string;
-  }) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => Promise<void>;
-  clearError: () => void;
-  refreshToken: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-};
-
-function authReducer(state: AuthState, action: AuthAction): AuthState {
-  switch (action.type) {
-    case 'AUTH_START':
-      return {
-        ...state,
-        isLoading: true,
-        error: null,
-      };
-    case 'AUTH_SUCCESS':
-      return {
-        ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      };
-    case 'AUTH_FAILURE':
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: action.payload,
-      };
-    case 'LOGOUT':
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      };
-    case 'UPDATE_USER':
-      return {
-        ...state,
-        user: action.payload,
-      };
-    case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null,
-      };
-    default:
-      return state;
-  }
-}
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
-
-  // 初始化认证状态
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await authApi.getCurrentUser();
-          dispatch({
-            type: 'AUTH_SUCCESS',
-            payload: {
-              user: response.data.user,
-              token,
-            },
-          });
-        } catch (error) {
-          localStorage.removeItem('token');
-          dispatch({
-            type: 'AUTH_FAILURE',
-            payload: '认证已过期，请重新登录',
-          });
-        }
-      } else {
-        dispatch({ type: 'LOGOUT' });
-      }
-    };
-
-    initAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    dispatch({ type: 'AUTH_START' });
-    try {
-      const response: AuthResponse = await authApi.login({ email, password });
-      const { user, token } = response.data;
-      
-      localStorage.setItem('token', token);
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { user, token },
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || '登录失败';
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const register = async (userData: {
-    username: string;
-    email: string;
-    password: string;
-    plan?: string;
-  }) => {
-    dispatch({ type: 'AUTH_START' });
-    try {
-      const response: AuthResponse = await authApi.register(userData);
-      const { user, token } = response.data;
-      
-      localStorage.setItem('token', token);
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: { user, token },
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || '注册失败';
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    dispatch({ type: 'LOGOUT' });
-  };
-
-  const updateUser = async (userData: Partial<User>) => {
-    try {
-      const response = await authApi.updateProfile(userData);
-      dispatch({
-        type: 'UPDATE_USER',
-        payload: response.data.user,
-      });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || '更新用户信息失败';
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: errorMessage,
-      });
-      throw error;
-    }
-  };
-
-  const refreshToken = async () => {
-    try {
-      const response = await authApi.refreshToken();
-      const { token } = response.data;
-      
-      localStorage.setItem('token', token);
-      dispatch({
-        type: 'AUTH_SUCCESS',
-        payload: {
-          user: state.user!,
-          token,
-        },
-      });
-    } catch (error: any) {
-      logout();
-      throw error;
-    }
-  };
-
-  const clearError = () => {
-    dispatch({ type: 'CLEAR_ERROR' });
-  };
-
-  const value: AuthContextType = {
-    ...state,
-    login,
-    register,
-    logout,
-    updateUser,
-    clearError,
-    refreshToken,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -235,4 +25,138 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const isAuthenticated = !!user;
+
+  useEffect(() => {
+    // 检查本地存储的认证信息
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    
+    setIsLoading(false);
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (username: string, email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Registration failed');
+      }
+
+      const data = await response.json();
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Profile update failed');
+      }
+
+      const updatedUser = await response.json();
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error('Profile update error:', error);
+      throw error;
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateProfile,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };

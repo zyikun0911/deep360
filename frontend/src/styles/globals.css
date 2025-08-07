@@ -1,0 +1,14 @@
+/* 全局样式 */
+@import 'index.css';
+
+/* 自定义样式 */
+.App {
+  min-height: 100vh;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ant-layout-content {
+    padding: 16px !important;
+  }
+}
