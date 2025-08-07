@@ -214,7 +214,7 @@ async function startServer() {
     
     // 连接数据库
     logger.info('📦 连接数据库...');
-    await connectDB();
+    await connectDB(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360');
     
     // 连接Redis
     logger.info('🔴 连接Redis...');
