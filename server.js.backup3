@@ -32,7 +32,7 @@ const optimalPanelRoutes = require('./routes/optimalPanel');
 
 // 导入服务
 const SocketService = require('./services/socketService');
-const AccountManager = require('./services/// accountManager.*
+const AccountManager = require('./services/accountManager');
 const TaskScheduler = require('./services/taskScheduler');
 const WhatsAppService = require('./services/whatsappService');
 const TelegramService = require('./services/telegramService');
@@ -113,10 +113,10 @@ redisClient.on('connect', () => logger.info('Redis 连接成功'));
 
 // 初始化服务
 const socketService = new SocketService(io);
-// const // accountManager.*
+const accountManager = new AccountManager(redisClient, logger);
 const taskScheduler = new TaskScheduler(redisClient, logger);
-const whatsappService = new WhatsAppService(// accountManager.*
-const telegramService = new TelegramService(// accountManager.*
+const whatsappService = new WhatsAppService(accountManager, socketService, logger);
+const telegramService = new TelegramService(accountManager, socketService, logger);
 const pluginManager = new PluginManager(logger);
 const marketplaceService = new MarketplaceService(logger);
 const accountIsolationService = new AccountIsolationService();
@@ -130,7 +130,7 @@ const massMessagingService = new MassMessagingService();
 // 将服务添加到 app 实例，供路由使用
 app.locals.services = {
   socketService,
-  // accountManager.*
+  accountManager,
   taskScheduler,
   whatsappService,
   telegramService,
@@ -176,19 +176,19 @@ app.get('/health', async (req, res) => {
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
-// // app.use.*tasks.*
-// // app.use.*stats.*
-// app.use.*ai.*
-// // app.use.*webhooks.*
+app.use('/api/tasks', taskRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/phone-numbers', phoneNumberRoutes);
-// // // // app.use.*autoRegistration.*
+// // app.use.*autoRegistration.*
 app.use('/api/blue-check', blueCheckRoutes);
-// // app.use.*plugins.*
-// app.use.*accountIsolation.*
-// // // app.use.*batchRegistration.*
-// // app.use.*groupManagement.*
-// // // // app.use.*massMessaging.*
-// // app.use.*optimalPanel.*
+app.use('/api/plugins', pluginRoutes);
+app.use('/api/isolation', accountIsolationRoutes);
+// app.use.*batchRegistration.*
+app.use('/api/groups', groupManagementRoutes);
+// // app.use.*massMessaging.*
+app.use('/api/optimal-panel', optimalPanelRoutes);
 
 // 静态文件服务
 const frontendBuildPath = path.join(__dirname, 'frontend/build');
@@ -303,7 +303,7 @@ async function startServer() {
     logger.info('⚙️ 初始化服务...');
     try {
       await socketService.initialize?.();
-      await // accountManager.*
+      await accountManager.initialize?.();
       await taskScheduler.initialize?.();
       await whatsappService.initialize?.();
       await telegramService.initialize?.();
