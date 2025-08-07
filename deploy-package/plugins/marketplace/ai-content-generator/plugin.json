@@ -1,0 +1,437 @@
+{
+  "id": "ai-content-generator", 
+  "name": "AI智能内容生成器",
+  "displayName": "AI Content Generator Pro",
+  "version": "3.2.0",
+  "description": "强大的AI内容生成插件，支持文本创作、图像生成、语音合成、多语言翻译等功能，助力高效内容创作",
+  "author": {
+    "name": "Deep360 Team",
+    "email": "plugins@deep360.com", 
+    "website": "https://deep360.com"
+  },
+  "category": "ai",
+  "type": "extension",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0",
+    "deep360": ">=1.0.0"
+  },
+  "keywords": ["ai", "content", "generation", "text", "image", "translation"],
+  "tags": ["AI生成", "内容创作", "多媒体", "翻译", "营销文案"],
+  
+  "permissions": [
+    "ai.access",
+    "network.http", 
+    "files.read",
+    "files.write",
+    "database.read",
+    "database.write"
+  ],
+  
+  "dependencies": [],
+  
+  "hooks": [
+    {
+      "name": "content.generate.request",
+      "priority": 100
+    },
+    {
+      "name": "message.enhance.request", 
+      "priority": 90
+    }
+  ],
+  
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "启用AI内容生成",
+        "default": false
+      },
+      "providers": {
+        "type": "object",
+        "title": "AI服务提供商",
+        "properties": {
+          "text": {
+            "type": "object",
+            "title": "文本生成",
+            "properties": {
+              "primary": {
+                "type": "string",
+                "title": "主要提供商",
+                "enum": ["openai", "claude", "gemini", "local"],
+                "default": "openai"
+              },
+              "fallback": {
+                "type": "string",
+                "title": "备用提供商", 
+                "enum": ["openai", "claude", "gemini", "local"],
+                "default": "claude"
+              },
+              "models": {
+                "type": "object",
+                "title": "模型配置",
+                "properties": {
+                  "creative": {
+                    "type": "string",
+                    "title": "创意写作模型",
+                    "default": "gpt-4"
+                  },
+                  "factual": {
+                    "type": "string", 
+                    "title": "事实性内容模型",
+                    "default": "gpt-3.5-turbo"
+                  },
+                  "chat": {
+                    "type": "string",
+                    "title": "对话模型",
+                    "default": "gpt-3.5-turbo"
+                  }
+                }
+              }
+            }
+          },
+          "image": {
+            "type": "object",
+            "title": "图像生成",
+            "properties": {
+              "primary": {
+                "type": "string",
+                "title": "主要提供商",
+                "enum": ["dall-e", "midjourney", "stable-diffusion", "local"],
+                "default": "dall-e"
+              },
+              "styles": {
+                "type": "array",
+                "title": "支持的风格",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["realistic", "artistic", "cartoon", "minimal"]
+              }
+            }
+          },
+          "speech": {
+            "type": "object",
+            "title": "语音合成",
+            "properties": {
+              "primary": {
+                "type": "string",
+                "title": "主要提供商",
+                "enum": ["openai", "azure", "google", "local"],
+                "default": "openai"
+              },
+              "voices": {
+                "type": "array",
+                "title": "可用声音",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+              }
+            }
+          }
+        }
+      },
+      "templates": {
+        "type": "object",
+        "title": "内容模板",
+        "properties": {
+          "marketing": {
+            "type": "array",
+            "title": "营销文案模板",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "title": "模板名称"
+                },
+                "prompt": {
+                  "type": "string",
+                  "title": "提示词模板"
+                },
+                "category": {
+                  "type": "string", 
+                  "title": "分类"
+                }
+              }
+            },
+            "default": [
+              {
+                "name": "产品推广",
+                "prompt": "为以下产品写一段吸引人的推广文案：{product_name}，主要特点：{features}",
+                "category": "promotion"
+              },
+              {
+                "name": "社交媒体",
+                "prompt": "为{platform}平台创作一条关于{topic}的社交媒体内容，要求简洁有趣",
+                "category": "social"
+              }
+            ]
+          },
+          "content": {
+            "type": "array",
+            "title": "内容创作模板",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "title": "模板名称"
+                },
+                "prompt": {
+                  "type": "string",
+                  "title": "提示词模板"
+                },
+                "type": {
+                  "type": "string",
+                  "title": "内容类型"
+                }
+              }
+            },
+            "default": [
+              {
+                "name": "文章写作",
+                "prompt": "写一篇关于{topic}的文章，要求：{requirements}",
+                "type": "article"
+              },
+              {
+                "name": "邮件模板", 
+                "prompt": "写一封{purpose}的邮件给{audience}，语气{tone}",
+                "type": "email"
+              }
+            ]
+          }
+        }
+      },
+      "quality": {
+        "type": "object",
+        "title": "质量控制",
+        "properties": {
+          "contentFilter": {
+            "type": "boolean",
+            "title": "内容过滤",
+            "default": true
+          },
+          "plagiarismCheck": {
+            "type": "boolean",
+            "title": "原创性检查",
+            "default": false
+          },
+          "grammarCheck": {
+            "type": "boolean",
+            "title": "语法检查",
+            "default": true
+          },
+          "toneConsistency": {
+            "type": "boolean",
+            "title": "语调一致性",
+            "default": true
+          }
+        }
+      },
+      "optimization": {
+        "type": "object",
+        "title": "优化设置",
+        "properties": {
+          "caching": {
+            "type": "boolean",
+            "title": "启用缓存",
+            "default": true
+          },
+          "batchProcessing": {
+            "type": "boolean",
+            "title": "批量处理",
+            "default": true
+          },
+          "costOptimization": {
+            "type": "boolean",
+            "title": "成本优化",
+            "default": true
+          },
+          "maxTokens": {
+            "type": "number",
+            "title": "最大令牌数",
+            "default": 2000
+          }
+        }
+      },
+      "languages": {
+        "type": "array",
+        "title": "支持的语言",
+        "items": {
+          "type": "string"
+        },
+        "default": ["zh-CN", "en-US", "ja-JP", "ko-KR", "es-ES", "fr-FR", "de-DE"]
+      }
+    }
+  },
+  
+  "defaultConfig": {
+    "enabled": false,
+    "providers": {
+      "text": {
+        "primary": "openai",
+        "fallback": "claude",
+        "models": {
+          "creative": "gpt-4",
+          "factual": "gpt-3.5-turbo",
+          "chat": "gpt-3.5-turbo"
+        }
+      },
+      "image": {
+        "primary": "dall-e",
+        "styles": ["realistic", "artistic", "cartoon", "minimal"]
+      },
+      "speech": {
+        "primary": "openai",
+        "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+      }
+    },
+    "templates": {
+      "marketing": [
+        {
+          "name": "产品推广",
+          "prompt": "为以下产品写一段吸引人的推广文案：{product_name}，主要特点：{features}",
+          "category": "promotion"
+        }
+      ],
+      "content": [
+        {
+          "name": "文章写作",
+          "prompt": "写一篇关于{topic}的文章，要求：{requirements}",
+          "type": "article"
+        }
+      ]
+    },
+    "quality": {
+      "contentFilter": true,
+      "plagiarismCheck": false,
+      "grammarCheck": true,
+      "toneConsistency": true
+    },
+    "optimization": {
+      "caching": true,
+      "batchProcessing": true,
+      "costOptimization": true,
+      "maxTokens": 2000
+    },
+    "languages": ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+  },
+  
+  "marketplace": {
+    "featured": true,
+    "verified": true,
+    "downloads": 23456,
+    "rating": {
+      "average": 4.9,
+      "count": 789
+    }
+  },
+  
+  "compatibility": {
+    "whatsapp": {
+      "features": ["send", "media"]
+    },
+    "telegram": {
+      "features": ["send", "media", "channels"]
+    },
+    "platform": ["web", "mobile", "desktop"]
+  },
+  
+  "i18n": {
+    "supportedLanguages": ["zh-CN", "en-US", "ja-JP", "ko-KR", "es-ES", "fr-FR"],
+    "defaultLanguage": "zh-CN"
+  },
+  
+  "assets": {
+    "icon": "icon.png",
+    "screenshots": ["screenshot1.png", "screenshot2.png", "screenshot3.png", "screenshot4.png"],
+    "documentation": "README.md",
+    "examples": ["examples/marketing.md", "examples/content.md"]
+  },
+  
+  "features": [
+    {
+      "name": "智能文本生成",
+      "description": "支持多种文本类型生成，包括营销文案、文章、邮件等"
+    },
+    {
+      "name": "AI图像创作",
+      "description": "根据文字描述生成高质量图像，支持多种艺术风格"
+    },
+    {
+      "name": "语音合成",
+      "description": "将文本转换为自然流畅的语音，支持多种声音"
+    },
+    {
+      "name": "多语言翻译",
+      "description": "精准的多语言翻译，保持语义和语调一致性"
+    },
+    {
+      "name": "内容优化",
+      "description": "自动优化内容质量，包括语法检查、语调调整等"
+    },
+    {
+      "name": "模板管理",
+      "description": "丰富的内容模板库，支持自定义模板创建"
+    }
+  ],
+  
+  "pricing": {
+    "model": "freemium",
+    "free": {
+      "requests": 100,
+      "features": ["basic_text", "translation"]
+    },
+    "pro": {
+      "price": "$29/month",
+      "requests": 5000,
+      "features": ["all_text", "images", "voice", "templates"]
+    },
+    "enterprise": {
+      "price": "custom",
+      "requests": "unlimited",
+      "features": ["all", "custom_models", "priority_support"]
+    }
+  },
+  
+  "changelog": [
+    {
+      "version": "3.2.0",
+      "date": "2024-01-20",
+      "changes": [
+        "新增语音合成功能",
+        "支持批量内容生成",
+        "优化图像生成质量",
+        "新增成本优化模式",
+        "修复模板变量解析问题"
+      ]
+    },
+    {
+      "version": "3.1.0",
+      "date": "2023-12-30",
+      "changes": [
+        "支持Claude和Gemini模型",
+        "新增内容质量检查",
+        "优化缓存机制",
+        "新增营销文案模板",
+        "改进多语言支持"
+      ]
+    },
+    {
+      "version": "3.0.0",
+      "date": "2023-11-15",
+      "changes": [
+        "重构插件架构",
+        "新增图像生成功能",
+        "支持自定义模板",
+        "新增内容过滤器",
+        "优化API调用效率"
+      ]
+    }
+  ]
+}

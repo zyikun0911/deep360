@@ -1,0 +1,247 @@
+{
+  "id": "whatsapp-auto-reply",
+  "name": "WhatsApp智能自动回复",
+  "displayName": "WhatsApp Auto Reply Pro",
+  "version": "2.1.0",
+  "description": "基于AI的WhatsApp智能自动回复插件，支持关键词匹配、智能对话、客服转接等功能",
+  "author": {
+    "name": "Deep360 Team",
+    "email": "plugins@deep360.com",
+    "website": "https://deep360.com"
+  },
+  "category": "messaging",
+  "type": "extension",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0",
+    "deep360": ">=1.0.0"
+  },
+  "keywords": ["whatsapp", "auto-reply", "ai", "chatbot", "customer-service"],
+  "
+tags": ["自动回复", "智能客服", "AI对话", "关键词匹配"],
+  
+  "permissions": [
+    "whatsapp.send",
+    "whatsapp.receive", 
+    "ai.access",
+    "database.read",
+    "database.write"
+  ],
+  
+  "dependencies": [],
+  
+  "hooks": [
+    {
+      "name": "whatsapp.message.received",
+      "priority": 100
+    },
+    {
+      "name": "whatsapp.group.message.received", 
+      "priority": 100
+    }
+  ],
+  
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "启用自动回复",
+        "default": false
+      },
+      "replyMode": {
+        "type": "string",
+        "title": "回复模式",
+        "enum": ["keyword", "ai", "hybrid"],
+        "enumNames": ["关键词匹配", "AI智能回复", "混合模式"],
+        "default": "hybrid"
+      },
+      "responseDelay": {
+        "type": "number",
+        "title": "回复延迟(秒)",
+        "minimum": 1,
+        "maximum": 300,
+        "default": 5
+      },
+      "workingHours": {
+        "type": "object",
+        "title": "工作时间",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "启用工作时间限制",
+            "default": false
+          },
+          "start": {
+            "type": "string",
+            "title": "开始时间",
+            "default": "09:00"
+          },
+          "end": {
+            "type": "string", 
+            "title": "结束时间",
+            "default": "18:00"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "时区",
+            "default": "Asia/Shanghai"
+          }
+        }
+      },
+      "keywordRules": {
+        "type": "array",
+        "title": "关键词规则",
+        "items": {
+          "type": "object",
+          "properties": {
+            "keywords": {
+              "type": "array",
+              "title": "关键词",
+              "items": {
+                "type": "string"
+              }
+            },
+            "response": {
+              "type": "string",
+              "title": "回复内容"
+            },
+            "enabled": {
+              "type": "boolean",
+              "title": "启用",
+              "default": true
+            }
+          }
+        },
+        "default": [
+          {
+            "keywords": ["你好", "hello", "hi"],
+            "response": "您好！很高兴为您服务，请问有什么可以帮助您的吗？",
+            "enabled": true
+          }
+        ]
+      },
+      "aiConfig": {
+        "type": "object",
+        "title": "AI配置",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "AI提供商",
+            "enum": ["openai", "claude", "local"],
+            "default": "openai"
+          },
+          "model": {
+            "type": "string",
+            "title": "AI模型",
+            "default": "gpt-3.5-turbo"
+          },
+          "systemPrompt": {
+            "type": "string",
+            "title": "系统提示词",
+            "default": "你是一个专业的客服助手，请用友好、专业的语气回答用户问题。回复要简洁明了，不超过100字。"
+          },
+          "maxTokens": {
+            "type": "number",
+            "title": "最大回复长度",
+            "default": 150
+          }
+        }
+      },
+      "fallbackMessage": {
+        "type": "string",
+        "title": "兜底回复",
+        "default": "抱歉，我暂时无法理解您的问题。请稍后联系我们的客服人员，或发送'人工客服'获取帮助。"
+      }
+    }
+  },
+  
+  "defaultConfig": {
+    "enabled": false,
+    "replyMode": "hybrid",
+    "responseDelay": 5,
+    "workingHours": {
+      "enabled": false,
+      "start": "09:00",
+      "end": "18:00",
+      "timezone": "Asia/Shanghai"
+    },
+    "keywordRules": [
+      {
+        "keywords": ["你好", "hello", "hi"],
+        "response": "您好！很高兴为您服务，请问有什么可以帮助您的吗？",
+        "enabled": true
+      },
+      {
+        "keywords": ["再见", "拜拜", "bye"],
+        "response": "感谢您的咨询，祝您生活愉快！如有其他问题，随时联系我们。",
+        "enabled": true
+      },
+      {
+        "keywords": ["价格", "多少钱", "费用"],
+        "response": "关于价格信息，请联系我们的销售顾问获取详细报价。发送'价格咨询'了解更多。",
+        "enabled": true
+      }
+    ],
+    "aiConfig": {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "systemPrompt": "你是一个专业的客服助手，请用友好、专业的语气回答用户问题。回复要简洁明了，不超过100字。",
+      "maxTokens": 150
+    },
+    "fallbackMessage": "抱歉，我暂时无法理解您的问题。请稍后联系我们的客服人员，或发送'人工客服'获取帮助。"
+  },
+  
+  "marketplace": {
+    "featured": true,
+    "verified": true,
+    "downloads": 15420,
+    "rating": {
+      "average": 4.8,
+      "count": 356
+    }
+  },
+  
+  "compatibility": {
+    "whatsapp": {
+      "minVersion": "2.0.0",
+      "features": ["send", "receive", "groups"]
+    },
+    "platform": ["web", "mobile", "desktop"]
+  },
+  
+  "i18n": {
+    "supportedLanguages": ["zh-CN", "en-US", "es-ES", "fr-FR"],
+    "defaultLanguage": "zh-CN"
+  },
+  
+  "assets": {
+    "icon": "icon.png",
+    "screenshots": ["screenshot1.png", "screenshot2.png"],
+    "documentation": "README.md"
+  },
+  
+  "changelog": [
+    {
+      "version": "2.1.0",
+      "date": "2024-01-15",
+      "changes": [
+        "新增AI智能回复功能",
+        "支持工作时间设置",
+        "优化关键词匹配算法",
+        "修复群组消息处理问题"
+      ]
+    },
+    {
+      "version": "2.0.0", 
+      "date": "2023-12-01",
+      "changes": [
+        "重构插件架构",
+        "新增混合回复模式",
+        "支持多语言配置",
+        "添加统计分析功能"
+      ]
+    }
+  ]
+}
