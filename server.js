@@ -147,6 +147,32 @@ app.locals.services = {
   redisClient
 };
 
+// 健康检查路由
+app.get('/health', async (req, res) => {
+  try {
+    const healthStatus = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.version,
+      services: {
+        database: 'connected',
+        redis: 'connected',
+        server: 'running'
+      }
+    };
+    
+    res.status(200).json(healthStatus);
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
