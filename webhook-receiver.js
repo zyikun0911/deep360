@@ -36,6 +36,10 @@ app.post('/webhook', (req, res) => {
     });
 });
 
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'github-webhook' });
+});
+
 app.listen(PORT, () => {
     console.log(`GitHub Webhook 服务器启动在端口 ${PORT}`);
 });
