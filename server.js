@@ -10,6 +10,9 @@ const mongoose = require('mongoose');
 const redis = require('redis');
 const winston = require('winston');
 
+// 导入数据库连接函数
+const { connectDB } = require('./utils/database');
+
 // 导入路由和中间件
 const authRoutes = require('./routes/auth');
 const accountRoutes = require('./routes/accounts');
