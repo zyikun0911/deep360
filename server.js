@@ -190,14 +190,36 @@ app.use('/api/groups', groupManagementRoutes);
 app.use('/api/mass-messaging', massMessagingRoutes);
 app.use('/api/optimal-panel', optimalPanelRoutes);
 
-// 静态文件服务（生产环境）
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'frontend/build')));
+// 静态文件服务
+const frontendBuildPath = path.join(__dirname, 'frontend/build');
+const frontendDistPath = path.join(__dirname, 'frontend/dist');
+
+// 检查前端构建文件是否存在
+if (require('fs').existsSync(frontendBuildPath)) {
+  console.log('✅ 找到前端构建文件:', frontendBuildPath);
+  app.use(express.static(frontendBuildPath));
   
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
+  // 所有非API路由都返回前端页面
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else if (require('fs').existsSync(frontendDistPath)) {
+  console.log('✅ 找到前端构建文件:', frontendDistPath);
+  app.use(express.static(frontendDistPath));
+  
+  // 所有非API路由都返回前端页面
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 } else {
+  console.log('⚠️ 未找到前端构建文件，仅提供API服务');
+  
   // 开发环境：提供简单的根路径响应
   app.get('/', (req, res) => {
     res.json({
@@ -212,22 +234,6 @@ if (process.env.NODE_ENV === 'production') {
       }
     });
   });
-  
-  // 开发环境：也提供静态文件服务（如果存在）
-  const frontendBuildPath = path.join(__dirname, 'frontend/build');
-  const frontendDistPath = path.join(__dirname, 'frontend/dist');
-  
-  if (require('fs').existsSync(frontendBuildPath)) {
-    app.use(express.static(frontendBuildPath));
-    app.get('/dashboard', (req, res) => {
-      res.sendFile(path.join(frontendBuildPath, 'index.html'));
-    });
-  } else if (require('fs').existsSync(frontendDistPath)) {
-    app.use(express.static(frontendDistPath));
-    app.get('/dashboard', (req, res) => {
-      res.sendFile(path.join(frontendDistPath, 'index.html'));
-    });
-  }
 }
 
 // 错误处理中间件
