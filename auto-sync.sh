@@ -10,5 +10,5 @@ if [[ -n $(git status --porcelain) ]]; then
     git push origin main
     echo "✅ 同步完成: $(date)"
 else
-    echo "�� 没有更改需要同步"
+    echo " 没有更改需要同步"
 fi
