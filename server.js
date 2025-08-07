@@ -197,24 +197,40 @@ const frontendDistPath = path.join(__dirname, 'frontend/dist');
 // 检查前端构建文件是否存在
 if (require('fs').existsSync(frontendBuildPath)) {
   console.log('✅ 找到前端构建文件:', frontendBuildPath);
+  
+  // 先设置静态文件服务
   app.use(express.static(frontendBuildPath));
   
-  // 所有非API路由都返回前端页面
+  // 然后设置 SPA 路由（必须在静态文件服务之后）
   app.get('*', (req, res, next) => {
+    // 跳过 API 路由
     if (req.path.startsWith('/api/')) {
       return next();
     }
+    // 跳过静态资源请求
+    if (req.path.startsWith('/assets/') || req.path.startsWith('/static/')) {
+      return next();
+    }
+    // 对于其他路由，返回 index.html
     res.sendFile(path.join(frontendBuildPath, 'index.html'));
   });
 } else if (require('fs').existsSync(frontendDistPath)) {
   console.log('✅ 找到前端构建文件:', frontendDistPath);
+  
+  // 先设置静态文件服务
   app.use(express.static(frontendDistPath));
   
-  // 所有非API路由都返回前端页面
+  // 然后设置 SPA 路由（必须在静态文件服务之后）
   app.get('*', (req, res, next) => {
+    // 跳过 API 路由
     if (req.path.startsWith('/api/')) {
       return next();
     }
+    // 跳过静态资源请求
+    if (req.path.startsWith('/assets/') || req.path.startsWith('/static/')) {
+      return next();
+    }
+    // 对于其他路由，返回 index.html
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 } else {
