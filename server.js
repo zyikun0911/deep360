@@ -212,6 +212,22 @@ if (process.env.NODE_ENV === 'production') {
       }
     });
   });
+  
+  // 开发环境：也提供静态文件服务（如果存在）
+  const frontendBuildPath = path.join(__dirname, 'frontend/build');
+  const frontendDistPath = path.join(__dirname, 'frontend/dist');
+  
+  if (require('fs').existsSync(frontendBuildPath)) {
+    app.use(express.static(frontendBuildPath));
+    app.get('/dashboard', (req, res) => {
+      res.sendFile(path.join(frontendBuildPath, 'index.html'));
+    });
+  } else if (require('fs').existsSync(frontendDistPath)) {
+    app.use(express.static(frontendDistPath));
+    app.get('/dashboard', (req, res) => {
+      res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+  }
 }
 
 // 错误处理中间件
