@@ -1,0 +1,56 @@
+# 依赖包
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境配置
+.env
+.env.local
+.env.production
+
+# 日志文件
+logs/
+*.log
+
+# 上传文件
+uploads/
+temp/
+
+# 构建文件
+dist/
+build/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.vscode/
+.idea/
+
+# 大文件
+*.iso
+*.rar
+*.zip
+*.msi
+*.tar.gz
+
+# 记录文件
+记录.txt
+*.txt
+
+# 临时文件
+*.tmp
+*.temp
+
+# 缓存文件
+.cache/
+.temp/
+
+# 测试覆盖率
+coverage/
+
+# 本地配置文件
+config/local.js
+config/local.json 

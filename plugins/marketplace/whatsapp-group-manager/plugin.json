@@ -1,0 +1,478 @@
+{
+  "id": "whatsapp-group-manager",
+  "name": "WhatsApp群组智能管理",
+  "displayName": "WhatsApp Group Manager Pro",
+  "version": "2.5.0",
+  "description": "专业的WhatsApp群组管理插件，支持群成员管理、内容审核、自动化运营、数据统计等功能",
+  "author": {
+    "name": "Deep360 Team",
+    "email": "plugins@deep360.com",
+    "website": "https://deep360.com"
+  },
+  "category": "messaging",
+  "type": "extension",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0",
+    "deep360": ">=1.0.0"
+  },
+  "keywords": ["whatsapp", "group", "management", "moderation", "automation"],
+  "tags": ["群组管理", "成员管理", "内容审核", "自动化"],
+  
+  "permissions": [
+    "whatsapp.send",
+    "whatsapp.receive",
+    "whatsapp.groups",
+    "whatsapp.admin",
+    "database.read",
+    "database.write",
+    "scheduler.access"
+  ],
+  
+  "dependencies": [],
+  
+  "hooks": [
+    {
+      "name": "whatsapp.group.member.added",
+      "priority": 100
+    },
+    {
+      "name": "whatsapp.group.member.removed",
+      "priority": 100
+    },
+    {
+      "name": "whatsapp.group.message.received",
+      "priority": 100
+    },
+    {
+      "name": "whatsapp.group.info.changed",
+      "priority": 100
+    }
+  ],
+  
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "启用群组管理",
+        "default": false
+      },
+      "managedGroups": {
+        "type": "array",
+        "title": "管理的群组",
+        "items": {
+          "type": "object",
+          "properties": {
+            "groupId": {
+              "type": "string",
+              "title": "群组ID"
+            },
+            "name": {
+              "type": "string",
+              "title": "群组名称"
+            },
+            "rules": {
+              "type": "array",
+              "title": "群组规则",
+              "items": {
+                "type": "string"
+              }
+            },
+            "autoModeration": {
+              "type": "boolean",
+              "title": "自动审核",
+              "default": true
+            }
+          }
+        },
+        "default": []
+      },
+      "memberManagement": {
+        "type": "object",
+        "title": "成员管理",
+        "properties": {
+          "welcomeMessage": {
+            "type": "string",
+            "title": "欢迎消息",
+            "default": "欢迎 @{member} 加入群组！请阅读群规并遵守。"
+          },
+          "autoApproval": {
+            "type": "object",
+            "title": "自动审批",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用自动审批",
+                "default": false
+              },
+              "criteria": {
+                "type": "object",
+                "title": "审批条件",
+                "properties": {
+                  "hasProfilePicture": {
+                    "type": "boolean",
+                    "title": "需要头像",
+                    "default": false
+                  },
+                  "minAccountAge": {
+                    "type": "number",
+                    "title": "最小账号年龄(天)",
+                    "default": 0
+                  },
+                  "whitelist": {
+                    "type": "array",
+                    "title": "白名单",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                }
+              }
+            }
+          },
+          "memberLimits": {
+            "type": "object",
+            "title": "成员限制",
+            "properties": {
+              "maxMembers": {
+                "type": "number",
+                "title": "最大成员数",
+                "default": 256
+              },
+              "newMemberCooldown": {
+                "type": "number",
+                "title": "新成员冷却时间(小时)",
+                "default": 0
+              }
+            }
+          }
+        }
+      },
+      "contentModeration": {
+        "type": "object",
+        "title": "内容审核",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "启用内容审核",
+            "default": true
+          },
+          "autoDelete": {
+            "type": "boolean",
+            "title": "自动删除违规内容",
+            "default": false
+          },
+          "warningSystem": {
+            "type": "object",
+            "title": "警告系统",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用警告系统",
+                "default": true
+              },
+              "maxWarnings": {
+                "type": "number",
+                "title": "最大警告次数",
+                "default": 3
+              },
+              "warningExpiry": {
+                "type": "number",
+                "title": "警告过期时间(天)",
+                "default": 30
+              }
+            }
+          },
+          "filters": {
+            "type": "object",
+            "title": "内容过滤器",
+            "properties": {
+              "spamFilter": {
+                "type": "boolean",
+                "title": "垃圾信息过滤",
+                "default": true
+              },
+              "profanityFilter": {
+                "type": "boolean",
+                "title": "脏话过滤",
+                "default": true
+              },
+              "linkFilter": {
+                "type": "boolean",
+                "title": "链接过滤",
+                "default": false
+              },
+              "mediaFilter": {
+                "type": "boolean",
+                "title": "媒体文件过滤",
+                "default": false
+              },
+              "bannedWords": {
+                "type": "array",
+                "title": "禁用词汇",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "allowedDomains": {
+                "type": "array",
+                "title": "允许的域名",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            }
+          }
+        }
+      },
+      "automation": {
+        "type": "object",
+        "title": "自动化功能",
+        "properties": {
+          "autoKick": {
+            "type": "object",
+            "title": "自动踢人",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用自动踢人",
+                "default": false
+              },
+              "inactiveThreshold": {
+                "type": "number",
+                "title": "不活跃阈值(天)",
+                "default": 30
+              },
+              "violations": {
+                "type": "boolean",
+                "title": "违规自动踢人",
+                "default": true
+              }
+            }
+          },
+          "autoPromote": {
+            "type": "object",
+            "title": "自动提升管理员",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用自动提升",
+                "default": false
+              },
+              "criteria": {
+                "type": "object",
+                "title": "提升条件",
+                "properties": {
+                  "minMessages": {
+                    "type": "number",
+                    "title": "最少消息数",
+                    "default": 100
+                  },
+                  "membershipDuration": {
+                    "type": "number",
+                    "title": "入群时间(天)",
+                    "default": 30
+                  },
+                  "noViolations": {
+                    "type": "boolean",
+                    "title": "无违规记录",
+                    "default": true
+                  }
+                }
+              }
+            }
+          },
+          "scheduledMessages": {
+            "type": "array",
+            "title": "定时消息",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "title": "消息内容"
+                },
+                "cron": {
+                  "type": "string",
+                  "title": "定时表达式"
+                },
+                "enabled": {
+                  "type": "boolean",
+                  "title": "启用",
+                  "default": true
+                }
+              }
+            },
+            "default": []
+          }
+        }
+      },
+      "analytics": {
+        "type": "object",
+        "title": "数据分析",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "启用数据分析",
+            "default": true
+          },
+          "trackMetrics": {
+            "type": "array",
+            "title": "追踪指标",
+            "items": {
+              "type": "string",
+              "enum": ["messages", "members", "activity", "violations", "growth"]
+            },
+            "default": ["messages", "members", "activity", "growth"]
+          },
+          "reportSchedule": {
+            "type": "string",
+            "title": "报告频率",
+            "enum": ["daily", "weekly", "monthly"],
+            "default": "weekly"
+          }
+        }
+      }
+    }
+  },
+  
+  "defaultConfig": {
+    "enabled": false,
+    "managedGroups": [],
+    "memberManagement": {
+      "welcomeMessage": "欢迎 @{member} 加入群组！请阅读群规并遵守。",
+      "autoApproval": {
+        "enabled": false,
+        "criteria": {
+          "hasProfilePicture": false,
+          "minAccountAge": 0,
+          "whitelist": []
+        }
+      },
+      "memberLimits": {
+        "maxMembers": 256,
+        "newMemberCooldown": 0
+      }
+    },
+    "contentModeration": {
+      "enabled": true,
+      "autoDelete": false,
+      "warningSystem": {
+        "enabled": true,
+        "maxWarnings": 3,
+        "warningExpiry": 30
+      },
+      "filters": {
+        "spamFilter": true,
+        "profanityFilter": true,
+        "linkFilter": false,
+        "mediaFilter": false,
+        "bannedWords": [],
+        "allowedDomains": []
+      }
+    },
+    "automation": {
+      "autoKick": {
+        "enabled": false,
+        "inactiveThreshold": 30,
+        "violations": true
+      },
+      "autoPromote": {
+        "enabled": false,
+        "criteria": {
+          "minMessages": 100,
+          "membershipDuration": 30,
+          "noViolations": true
+        }
+      },
+      "scheduledMessages": []
+    },
+    "analytics": {
+      "enabled": true,
+      "trackMetrics": ["messages", "members", "activity", "growth"],
+      "reportSchedule": "weekly"
+    }
+  },
+  
+  "marketplace": {
+    "featured": true,
+    "verified": true,
+    "downloads": 12847,
+    "rating": {
+      "average": 4.7,
+      "count": 245
+    }
+  },
+  
+  "compatibility": {
+    "whatsapp": {
+      "minVersion": "2.0.0",
+      "features": ["groups", "admin", "moderation"]
+    },
+    "platform": ["web", "mobile", "desktop"]
+  },
+  
+  "i18n": {
+    "supportedLanguages": ["zh-CN", "en-US", "es-ES", "pt-BR"],
+    "defaultLanguage": "zh-CN"
+  },
+  
+  "assets": {
+    "icon": "icon.png",
+    "screenshots": ["screenshot1.png", "screenshot2.png", "screenshot3.png"],
+    "documentation": "README.md"
+  },
+  
+  "features": [
+    {
+      "name": "智能成员管理",
+      "description": "自动欢迎新成员、审批申请、管理成员权限"
+    },
+    {
+      "name": "内容自动审核",
+      "description": "智能检测违规内容、垃圾信息、不当言论"
+    },
+    {
+      "name": "群组规则执行",
+      "description": "自动执行群规、警告违规用户、管理权限"
+    },
+    {
+      "name": "数据分析报告",
+      "description": "详细的群组活跃度、成员行为分析报告"
+    },
+    {
+      "name": "自动化运营",
+      "description": "定时消息、自动踢人、管理员提升等功能"
+    }
+  ],
+  
+  "changelog": [
+    {
+      "version": "2.5.0",
+      "date": "2024-01-12",
+      "changes": [
+        "新增自动管理员提升功能",
+        "优化内容审核算法",
+        "支持定时消息发送",
+        "新增成员行为分析",
+        "修复群组信息同步问题"
+      ]
+    },
+    {
+      "version": "2.4.0",
+      "date": "2023-12-20",
+      "changes": [
+        "新增警告系统",
+        "支持批量群组管理",
+        "优化垃圾信息检测",
+        "新增成员白名单功能",
+        "改进数据统计准确性"
+      ]
+    }
+  ]
+}

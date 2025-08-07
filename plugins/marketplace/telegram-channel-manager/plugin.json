@@ -1,0 +1,354 @@
+{
+  "id": "telegram-channel-manager",
+  "name": "Telegram频道智能管理",
+  "displayName": "Telegram Channel Manager Pro",
+  "version": "1.8.0",
+  "description": "专业的Telegram频道管理插件，支持内容发布、用户管理、数据分析、自动化运营等功能",
+  "author": {
+    "name": "Deep360 Team",
+    "email": "plugins@deep360.com",
+    "website": "https://deep360.com"
+  },
+  "category": "messaging",
+  "type": "extension",
+  "main": "index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0",
+    "deep360": ">=1.0.0"
+  },
+  "keywords": ["telegram", "channel", "management", "automation", "broadcast"],
+  "tags": ["频道管理", "内容发布", "用户增长", "数据分析"],
+  
+  "permissions": [
+    "telegram.send",
+    "telegram.receive",
+    "telegram.channels",
+    "telegram.admin",
+    "database.read",
+    "database.write",
+    "files.read",
+    "files.write",
+    "scheduler.access"
+  ],
+  
+  "dependencies": [],
+  
+  "hooks": [
+    {
+      "name": "telegram.channel.post",
+      "priority": 100
+    },
+    {
+      "name": "telegram.channel.member.joined",
+      "priority": 100
+    },
+    {
+      "name": "telegram.channel.member.left",
+      "priority": 100
+    }
+  ],
+  
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "启用频道管理",
+        "default": false
+      },
+      "channels": {
+        "type": "array",
+        "title": "管理的频道",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "title": "频道ID"
+            },
+            "name": {
+              "type": "string",
+              "title": "频道名称"
+            },
+            "autoPost": {
+              "type": "boolean",
+              "title": "启用自动发布",
+              "default": false
+            },
+            "contentFilters": {
+              "type": "array",
+              "title": "内容过滤器",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "default": []
+      },
+      "publishing": {
+        "type": "object",
+        "title": "发布设置",
+        "properties": {
+          "schedule": {
+            "type": "object",
+            "title": "发布计划",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用定时发布",
+                "default": false
+              },
+              "times": {
+                "type": "array",
+                "title": "发布时间",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["09:00", "15:00", "21:00"]
+              },
+              "timezone": {
+                "type": "string",
+                "title": "时区",
+                "default": "Asia/Shanghai"
+              }
+            }
+          },
+          "contentTypes": {
+            "type": "object",
+            "title": "内容类型配置",
+            "properties": {
+              "text": {
+                "type": "boolean",
+                "title": "支持文本",
+                "default": true
+              },
+              "image": {
+                "type": "boolean", 
+                "title": "支持图片",
+                "default": true
+              },
+              "video": {
+                "type": "boolean",
+                "title": "支持视频",
+                "default": true
+              },
+              "document": {
+                "type": "boolean",
+                "title": "支持文档",
+                "default": false
+              }
+            }
+          },
+          "autoHashtags": {
+            "type": "boolean",
+            "title": "自动添加标签",
+            "default": true
+          },
+          "crossPost": {
+            "type": "boolean",
+            "title": "启用跨频道发布",
+            "default": false
+          }
+        }
+      },
+      "userManagement": {
+        "type": "object",
+        "title": "用户管理",
+        "properties": {
+          "welcomeMessage": {
+            "type": "string",
+            "title": "欢迎消息",
+            "default": "欢迎加入我们的频道！🎉"
+          },
+          "autoModerator": {
+            "type": "object",
+            "title": "自动审核",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "title": "启用自动审核",
+                "default": false
+              },
+              "spamFilter": {
+                "type": "boolean",
+                "title": "垃圾信息过滤",
+                "default": true
+              },
+              "bannedWords": {
+                "type": "array",
+                "title": "禁用词汇",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            }
+          },
+          "userTracking": {
+            "type": "boolean",
+            "title": "用户行为追踪",
+            "default": true
+          }
+        }
+      },
+      "analytics": {
+        "type": "object",
+        "title": "数据分析",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "启用数据分析",
+            "default": true
+          },
+          "metricsToTrack": {
+            "type": "array",
+            "title": "追踪指标",
+            "items": {
+              "type": "string",
+              "enum": ["views", "reactions", "shares", "comments", "growth"]
+            },
+            "default": ["views", "reactions", "shares", "growth"]
+          },
+          "reportFrequency": {
+            "type": "string",
+            "title": "报告频率",
+            "enum": ["daily", "weekly", "monthly"],
+            "default": "weekly"
+          }
+        }
+      },
+      "contentSources": {
+        "type": "array",
+        "title": "内容源",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "title": "类型",
+              "enum": ["rss", "webhook", "api", "manual"]
+            },
+            "url": {
+              "type": "string",
+              "title": "URL地址"
+            },
+            "enabled": {
+              "type": "boolean",
+              "title": "启用",
+              "default": true
+            }
+          }
+        },
+        "default": []
+      }
+    }
+  },
+  
+  "defaultConfig": {
+    "enabled": false,
+    "channels": [],
+    "publishing": {
+      "schedule": {
+        "enabled": false,
+        "times": ["09:00", "15:00", "21:00"],
+        "timezone": "Asia/Shanghai"
+      },
+      "contentTypes": {
+        "text": true,
+        "image": true,
+        "video": true,
+        "document": false
+      },
+      "autoHashtags": true,
+      "crossPost": false
+    },
+    "userManagement": {
+      "welcomeMessage": "欢迎加入我们的频道！🎉",
+      "autoModerator": {
+        "enabled": false,
+        "spamFilter": true,
+        "bannedWords": []
+      },
+      "userTracking": true
+    },
+    "analytics": {
+      "enabled": true,
+      "metricsToTrack": ["views", "reactions", "shares", "growth"],
+      "reportFrequency": "weekly"
+    },
+    "contentSources": []
+  },
+  
+  "marketplace": {
+    "featured": true,
+    "verified": true,
+    "downloads": 8934,
+    "rating": {
+      "average": 4.6,
+      "count": 127
+    }
+  },
+  
+  "compatibility": {
+    "telegram": {
+      "minVersion": "6.0.0",
+      "features": ["channels", "bots", "admin"]
+    },
+    "platform": ["web", "mobile", "desktop"]
+  },
+  
+  "i18n": {
+    "supportedLanguages": ["zh-CN", "en-US", "ru-RU", "es-ES"],
+    "defaultLanguage": "zh-CN"
+  },
+  
+  "assets": {
+    "icon": "icon.png",
+    "screenshots": ["screenshot1.png", "screenshot2.png", "screenshot3.png"],
+    "documentation": "README.md"
+  },
+  
+  "features": [
+    {
+      "name": "智能内容发布",
+      "description": "支持定时发布、跨频道发布、内容优化"
+    },
+    {
+      "name": "用户增长管理",
+      "description": "用户行为分析、增长策略、互动优化"
+    },
+    {
+      "name": "数据分析报告",
+      "description": "详细的数据分析和可视化报告"
+    },
+    {
+      "name": "自动化运营",
+      "description": "自动审核、内容抓取、智能推荐"
+    }
+  ],
+  
+  "changelog": [
+    {
+      "version": "1.8.0",
+      "date": "2024-01-10",
+      "changes": [
+        "新增跨频道发布功能",
+        "优化数据分析算法",
+        "支持视频内容发布",
+        "修复用户统计错误"
+      ]
+    },
+    {
+      "version": "1.7.0",
+      "date": "2023-12-15",
+      "changes": [
+        "新增内容源管理",
+        "支持RSS订阅发布",
+        "优化发布调度算法",
+        "新增用户行为分析"
+      ]
+    }
+  ]
+}
