@@ -197,6 +197,21 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
   });
+} else {
+  // 开发环境：提供简单的根路径响应
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Deep360 API 服务运行正常',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        health: '/health',
+        api: '/api/*',
+        dashboard: '/dashboard'
+      }
+    });
+  });
 }
 
 // 错误处理中间件
