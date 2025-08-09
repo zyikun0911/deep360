@@ -12,7 +12,8 @@ const authMiddleware = async (req, res, next) => {
     if (!authHeader) {
       return res.status(401).json({
         success: false,
-        message: '访问被拒绝，请提供认证令牌'
+        message: '访问被拒绝，请提供认证令牌',
+        error: { code: 'AUTHENTICATION_ERROR' }
       });
     }
 
@@ -23,7 +24,8 @@ const authMiddleware = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: '访问被拒绝，无效的令牌格式'
+        message: '访问被拒绝，无效的令牌格式',
+        error: { code: 'AUTHENTICATION_ERROR' }
       });
     }
 
@@ -35,7 +37,8 @@ const authMiddleware = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: '认证失败，用户不存在'
+        message: '认证失败，用户不存在',
+        error: { code: 'AUTHENTICATION_ERROR' }
       });
     }
 
@@ -64,14 +67,16 @@ const authMiddleware = async (req, res, next) => {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({
         success: false,
-        message: '认证失败，无效的令牌'
+        message: '认证失败，无效的令牌',
+        error: { code: 'AUTHENTICATION_ERROR' }
       });
     }
 
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: '认证失败，令牌已过期'
+        message: '认证失败，令牌已过期',
+        error: { code: 'AUTHENTICATION_ERROR' }
       });
     }
 

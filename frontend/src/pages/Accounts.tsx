@@ -1,10 +1,20 @@
-import React from 'react';
-import { Table, Button, Space, Tag, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Table, Button, Space, Tag, Typography, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
+interface AccountRow {
+  key: string;
+  name: string;
+  platform: string;
+  status: string;
+}
+
 const Accounts: React.FC = () => {
+  const [rows, setRows] = useState<AccountRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const columns = [
     {
       title: '账号名称',
@@ -16,7 +26,7 @@ const Accounts: React.FC = () => {
       dataIndex: 'platform',
       key: 'platform',
       render: (platform: string) => (
-        <Tag color={platform === 'WhatsApp' ? 'green' : 'blue'}>{platform}</Tag>
+        <Tag color={platform === 'whatsapp' ? 'green' : 'blue'}>{platform}</Tag>
       ),
     },
     {
@@ -24,7 +34,7 @@ const Accounts: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === '在线' ? 'green' : 'red'}>{status}</Tag>
+        <Tag color={status === 'connected' ? 'green' : 'red'}>{status}</Tag>
       ),
     },
     {
@@ -39,31 +49,39 @@ const Accounts: React.FC = () => {
     },
   ];
 
-  const data = [
-    {
-      key: '1',
-      name: '账号1',
-      platform: 'WhatsApp',
-      status: '在线',
-    },
-    {
-      key: '2',
-      name: '账号2',
-      platform: 'Telegram',
-      status: '离线',
-    },
-  ];
+  const loadAccounts = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const resp = await fetch('/api/accounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error('加载账号失败');
+      const raw = await resp.json();
+      const list = raw?.data || [];
+      const mapped: AccountRow[] = (Array.isArray(list) ? list : []).map((a: any) => ({
+        key: a._id || a.accountId,
+        name: a.name,
+        platform: a.type || a.platform,
+        status: a.status || 'pending',
+      }));
+      setRows(mapped);
+    } catch (e: any) {
+      message.error(e.message || '加载账号失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAccounts(); }, []);
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={2}>账号管理</Title>
-        <Button type="primary" icon={<PlusOutlined />}>
-          添加账号
-        </Button>
+        <Button type="primary" icon={<PlusOutlined />}>添加账号</Button>
       </div>
-      
-      <Table columns={columns} dataSource={data} />
+      <Table columns={columns} dataSource={rows} loading={loading} />
     </div>
   );
 };

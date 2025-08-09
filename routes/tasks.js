@@ -603,4 +603,31 @@ router.get('/stats/overview', authMiddleware, async (req, res) => {
   }
 });
 
+// 执行任务
+router.post('/:taskId/execute', authMiddleware, async (req, res) => {
+  try {
+    const { services } = req.app.locals;
+    const { taskId } = req.params;
+
+    const task = await Task.findOne({ _id: taskId, userId: req.user.userId });
+    if (!task) {
+      return res.status(404).json({ success: false, message: '任务不存在' });
+    }
+
+    // 如果有调度器则委托执行，否则直接标记为已完成（降级运行）
+    if (services.taskScheduler && services.taskScheduler.addTask) {
+      await services.taskScheduler.addTask(task);
+    } else {
+      task.status = 'completed';
+      await task.save();
+    }
+
+    res.json({ success: true, message: '任务已执行' });
+  } catch (error) {
+    const { services } = req.app.locals;
+    services.logger.error('执行任务失败:', error);
+    res.status(500).json({ success: false, message: '执行任务失败', error: error.message });
+  }
+});
+
 module.exports = router;

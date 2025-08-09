@@ -71,11 +71,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Login failed');
       }
 
-      const data = await response.json();
+      const raw = await response.json();
+      const payload = raw?.data || raw;
+      const token = payload?.token;
+      const userPayload = payload?.user;
+
+      if (!token || !userPayload) {
+        throw new Error('Invalid login response');
+      }
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userPayload));
+      setUser(userPayload);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -100,11 +107,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Registration failed');
       }
 
-      const data = await response.json();
+      const raw = await response.json();
+      const payload = raw?.data || raw;
+      const token = payload?.token;
+      const userPayload = payload?.user;
+
+      if (!token || !userPayload) {
+        throw new Error('Invalid registration response');
+      }
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setUser(data.user);
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userPayload));
+      setUser(userPayload);
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -135,9 +149,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Profile update failed');
       }
 
-      const updatedUser = await response.json();
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      const raw = await response.json();
+      const payload = raw?.data?.user || raw?.user || raw;
+      setUser(payload);
+      localStorage.setItem('user', JSON.stringify(payload));
     } catch (error) {
       console.error('Profile update error:', error);
       throw error;
