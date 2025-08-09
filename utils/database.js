@@ -19,8 +19,7 @@ const connectDB = async (uri, options = {}) => {
       serverSelectionTimeoutMS: 5000, // 服务器选择超时
       socketTimeoutMS: 45000, // Socket 超时
       family: 4, // 使用 IPv4
-      bufferCommands: false, // 禁用 Mongoose 缓冲
-      bufferMaxEntries: 0 // 禁用 Mongoose 缓冲
+      bufferCommands: false // 禁用 Mongoose 缓冲
     };
 
     const connection = await mongoose.connect(uri, { ...defaultOptions, ...options });
