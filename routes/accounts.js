@@ -11,15 +11,14 @@ router.get('/', authMiddleware, async (req, res) => {
     const { services } = req.app.locals;
     const accounts = await services.accountManager.getUserAccounts(req.user.userId);
 
+    // 返回数组以兼容客户端/测试
     res.json({
       success: true,
-      data: {
-        accounts,
-        total: accounts.length
-      }
+      data: accounts
     });
 
   } catch (error) {
+    const { services } = req.app.locals;
     services.logger.error('获取账号列表失败:', error);
     res.status(500).json({
       success: false,
@@ -31,12 +30,14 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // 创建新账号
 router.post('/', authMiddleware, validateRequest([
-  'name',
-  'type'
+  'name'
 ]), async (req, res) => {
   try {
     const { services } = req.app.locals;
-    const { name, type, phoneNumber, botToken, config } = req.body;
+    let { name, type, platform, phoneNumber, botToken, config } = req.body;
+
+    // 兼容 platform 字段
+    type = type || platform;
 
     // 验证账号类型
     if (!['whatsapp', 'telegram'].includes(type)) {
@@ -79,12 +80,11 @@ router.post('/', authMiddleware, validateRequest([
       config: config || {}
     });
 
+    // 直接返回对象以兼容客户端/测试
     res.status(201).json({
       success: true,
       message: '账号创建成功',
-      data: {
-        account: account.toJSON()
-      }
+      data: account.toJSON()
     });
 
   } catch (error) {
@@ -101,28 +101,28 @@ router.post('/', authMiddleware, validateRequest([
 // 获取特定账号详情
 router.get('/:accountId', authMiddleware, async (req, res) => {
   try {
-    const { services } = req.app.locals;
     const { accountId } = req.params;
 
-    // 验证账号归属
-    const account = await Account.findOne({
-      accountId,
-      userId: req.user.userId
-    });
+    // 兼容用 _id 或 accountId 查找
+    let account = null;
+    if (accountId.match(/^[0-9a-fA-F]{24}$/)) {
+      account = await Account.findOne({ _id: accountId, userId: req.user.userId });
+    }
+    if (!account) {
+      account = await Account.findOne({ accountId, userId: req.user.userId });
+    }
 
     if (!account) {
       return res.status(404).json({
         success: false,
-        message: '账号不存在'
+        message: '账号不存在',
+        error: { code: 'NOT_FOUND_ERROR' }
       });
     }
 
-    // 获取详细状态
-    const status = await services.accountManager.getAccountStatus(accountId);
-
     res.json({
       success: true,
-      data: status
+      data: account.toJSON()
     });
 
   } catch (error) {
@@ -256,45 +256,27 @@ router.post('/:accountId/restart', authMiddleware, async (req, res) => {
   }
 });
 
-// 更新账号配置
-router.put('/:accountId/config', authMiddleware, async (req, res) => {
+// 更新账号
+router.put('/:accountId', authMiddleware, async (req, res) => {
   try {
-    const { services } = req.app.locals;
     const { accountId } = req.params;
-    const { config } = req.body;
+    const update = req.body;
 
-    // 验证账号归属
-    const account = await Account.findOne({
-      accountId,
-      userId: req.user.userId
-    });
+    const query = accountId.match(/^[0-9a-fA-F]{24}$/)
+      ? { _id: accountId, userId: req.user.userId }
+      : { accountId, userId: req.user.userId };
 
+    const account = await Account.findOneAndUpdate(query, update, { new: true });
     if (!account) {
-      return res.status(404).json({
-        success: false,
-        message: '账号不存在'
-      });
+      return res.status(404).json({ success: false, message: '账号不存在' });
     }
 
-    // 更新配置
-    const updatedAccount = await services.accountManager.updateAccountConfig(accountId, config);
-
-    res.json({
-      success: true,
-      message: '配置更新成功',
-      data: {
-        account: updatedAccount.toJSON()
-      }
-    });
+    res.json({ success: true, data: account.toJSON() });
 
   } catch (error) {
     const { services } = req.app.locals;
-    services.logger.error('更新账号配置失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '更新账号配置失败',
-      error: error.message
-    });
+    services.logger.error('更新账号失败:', error);
+    res.status(500).json({ success: false, message: '更新账号失败', error: error.message });
   }
 });
 
