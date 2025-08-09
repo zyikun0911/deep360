@@ -165,6 +165,19 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// 兼容别名：/profile 返回与 /me 相同的数据
+router.get('/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    res.json({ success: true, data: { user: user.toJSON() } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '获取用户信息失败', error: error.message });
+  }
+});
+
 // 更新用户资料
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
