@@ -79,16 +79,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static('uploads'));
 
-// 数据库连接（测试环境不自动连接，避免与内存数据库冲突）
-if (process.env.NODE_ENV !== 'test') {
-  mongoose
-    .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    })
-    .then(() => logger.info('MongoDB 连接成功'))
-    .catch((err) => logger.error('MongoDB 连接失败:', err));
-}
+// 移除启动前的自动数据库连接，统一在 startServer 中处理
 
 // Redis 连接
 const redisClient = redis.createClient({
@@ -98,7 +89,7 @@ const redisClient = redis.createClient({
 redisClient.on('error', (err) => logger.error('Redis 连接错误:', err));
 redisClient.on('connect', () => logger.info('Redis 连接成功'));
 
-// 初始化服务
+// 初始化服务占位，实际在 startServer 中按可用性创建
 const SocketService = require('./services/socketService');
 const AccountManager = require('./services/accountManager');
 const TaskScheduler = require('./services/taskScheduler');
@@ -114,40 +105,7 @@ const MultiLoginService = require('./services/multiLoginService');
 const GroupManagementService = require('./services/groupManagementService');
 const MassMessagingService = require('./services/massMessagingService');
 
-const socketService = new SocketService(io);
-const accountManager = new AccountManager(redisClient, logger);
-const taskScheduler = new TaskScheduler(redisClient, logger);
-const whatsappService = new WhatsAppService(accountManager, socketService, logger);
-const telegramService = new TelegramService(accountManager, socketService, logger);
-const pluginManager = new PluginManager(logger);
-const marketplaceService = new MarketplaceService(logger);
-const accountIsolationService = new AccountIsolationService();
-const proxyManager = new ProxyManager();
-const containerManager = new ContainerManager();
-const batchRegistrationService = new BatchRegistrationService();
-const multiLoginService = new MultiLoginService();
-const groupManagementService = new GroupManagementService();
-const massMessagingService = new MassMessagingService();
-
-// 将服务添加到 app 实例，供路由使用
-app.locals.services = {
-  socketService,
-  accountManager,
-  taskScheduler,
-  whatsappService,
-  telegramService,
-  pluginManager,
-  marketplaceService,
-  accountIsolationService,
-  proxyManager,
-  containerManager,
-  batchRegistrationService,
-  multiLoginService,
-  groupManagementService,
-  massMessagingService,
-  logger,
-  redisClient
-};
+app.locals.services = { logger, redisClient };
 
 // 健康检查路由
 app.get('/health', async (req, res) => {
@@ -160,7 +118,7 @@ app.get('/health', async (req, res) => {
       version: process.version,
       services: {
         database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-        redis: redisClient.isOpen ? 'connected' : 'disconnected',
+        redis: (redisClient && redisClient.isOpen) ? 'connected' : 'disconnected',
         server: 'running'
       }
     });
@@ -244,32 +202,91 @@ async function startServer() {
   try {
     logger.info('🚀 正在启动 Deep360 系统...');
     logger.info('📦 连接数据库...');
-    await connectDB(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360');
+    try {
+      await connectDB(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360');
+    } catch (dbErr) {
+      logger.warn('连接外部 MongoDB 失败，尝试使用内存数据库运行');
+      try {
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mem = await MongoMemoryServer.create();
+        const memUri = mem.getUri();
+        await connectDB(memUri);
+        logger.info('已切换到内存 MongoDB 运行');
+      } catch (memErr) {
+        logger.error('无法启动内存 MongoDB:', memErr);
+        throw dbErr;
+      }
+    }
 
     logger.info('🔴 连接Redis...');
-    await redisClient.connect();
+    let redisAvailable = true;
+    try {
+      await redisClient.connect();
+    } catch (rErr) {
+      redisAvailable = false;
+      logger.warn('Redis 不可用，系统将以降级模式启动（部分功能不可用）');
+    }
 
     logger.info('⚙️ 初始化服务...');
     try {
+      const socketService = new SocketService(io);
+      const pluginManager = new PluginManager(logger);
+      const marketplaceService = new MarketplaceService(logger);
+      const accountIsolationService = new AccountIsolationService();
+      const proxyManager = new ProxyManager();
+      const containerManager = new ContainerManager();
+      const batchRegistrationService = new BatchRegistrationService();
+      const multiLoginService = new MultiLoginService();
+      let accountManager = null;
+      let taskScheduler = null;
+      let whatsappService = null;
+      let telegramService = null;
+
+      if (redisAvailable) {
+        accountManager = new AccountManager(redisClient, logger);
+        taskScheduler = new TaskScheduler(redisClient, logger);
+        whatsappService = new WhatsAppService(accountManager, socketService, logger);
+        telegramService = new TelegramService(accountManager, socketService, logger);
+      }
+
+      app.locals.services = {
+        socketService,
+        accountManager,
+        taskScheduler,
+        whatsappService,
+        telegramService,
+        pluginManager,
+        marketplaceService,
+        accountIsolationService,
+        proxyManager,
+        containerManager,
+        batchRegistrationService,
+        multiLoginService,
+        groupManagementService: redisAvailable ? new GroupManagementService() : null,
+        massMessagingService: redisAvailable ? new MassMessagingService() : null,
+        logger,
+        redisClient: redisAvailable ? redisClient : null
+      };
+
       await socketService.initialize?.();
-      await accountManager.initialize?.();
-      await taskScheduler.initialize?.();
-      await whatsappService.initialize?.();
-      await telegramService.initialize?.();
+      await accountManager?.initialize?.();
+      await taskScheduler?.initialize?.();
+      await whatsappService?.initialize?.();
+      await telegramService?.initialize?.();
       await pluginManager.initialize?.();
       await marketplaceService.initialize?.();
       await accountIsolationService.initialize?.();
       await batchRegistrationService.initialize?.();
       await multiLoginService.initialize?.();
-      await groupManagementService.initialize?.();
-      await massMessagingService.initialize?.();
+      await app.locals.services.groupManagementService?.initialize?.();
+      await app.locals.services.massMessagingService?.initialize?.();
       logger.info('✅ 所有服务初始化完成');
     } catch (serviceError) {
       logger.warn('⚠️ 部分服务初始化失败，但系统可以继续运行:', serviceError.message);
     }
 
     logger.info('⏰ 启动任务调度器...');
-    await taskScheduler.start?.();
+    await app.locals.services.taskScheduler?.start?.();
 
     server.listen(PORT, () => {
       logger.info(`🚀 Deep360 SaaS 平台启动成功`);
