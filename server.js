@@ -1,193 +1,307 @@
+require('dotenv').config();
+
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const mongoose = require('mongoose');
+const redis = require('redis');
+const winston = require('winston');
+
+// 导入数据库连接函数
+const { connectDB } = require('./utils/database');
+
+// 导入路由和中间件
+const authRoutes = require('./routes/auth');
+const accountRoutes = require('./routes/accounts');
+const taskRoutes = require('./routes/tasks');
+const statsRoutes = require('./routes/stats');
+const aiRoutes = require('./routes/ai');
+const webhookRoutes = require('./routes/webhooks');
+const phoneNumberRoutes = require('./routes/phoneNumbers');
+const autoRegistrationRoutes = require('./routes/autoRegistration');
+const blueCheckRoutes = require('./routes/blueCheckRegistration');
+const pluginRoutes = require('./routes/plugins');
+const accountIsolationRoutes = require('./routes/accountIsolation');
+const batchRegistrationRoutes = require('./routes/batchRegistration');
+const groupManagementRoutes = require('./routes/groupManagement');
+const massMessagingRoutes = require('./routes/massMessaging');
+const optimalPanelRoutes = require('./routes/optimalPanel');
 
 const app = express();
-const PORT = 7788;
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:3001',
+    methods: ['GET', 'POST']
+  }
+});
 
-// 中间件配置
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
-app.use(express.json());
-app.use(express.static('frontend/build'));
+// 配置日志
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'deep360-saas' },
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
 
-// 服务状态管理
-const services = {
-    whatsapp: {
-        isConnected: true,
-        isReady: true,
-        groups: [
-            { id: 1, name: '销售群组A', members: 100, type: 'business' },
-            { id: 2, name: '销售群组B', members: 80, type: 'business' },
-            { id: 3, name: '客服群组', members: 50, type: 'support' },
-            { id: 4, name: '技术支持', members: 30, type: 'tech' }
-        ],
-        messages: [],
-        stats: {
-            dailyMessages: 150,
-            activeUsers: 200,
-            successRate: 98
-        }
-    },
-    telegram: {
-        isConnected: true,
-        groups: [
-            { id: 5, name: '公告频道', members: 500, type: 'announcement' },
-            { id: 6, name: '用户交流A', members: 300, type: 'community' },
-            { id: 7, name: '用户交流B', members: 200, type: 'community' }
-        ],
-        messages: [],
-        stats: {
-            dailyMessages: 300,
-            activeUsers: 800,
-            successRate: 99
-        }
+// 中间件设置
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'ws:', 'wss:']
     }
+  }
+}));
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : 'http://localhost:3001',
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/uploads', express.static('uploads'));
+
+// 数据库连接（测试环境不自动连接，避免与内存数据库冲突）
+if (process.env.NODE_ENV !== 'test') {
+  mongoose
+    .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    })
+    .then(() => logger.info('MongoDB 连接成功'))
+    .catch((err) => logger.error('MongoDB 连接失败:', err));
+}
+
+// Redis 连接
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+redisClient.on('error', (err) => logger.error('Redis 连接错误:', err));
+redisClient.on('connect', () => logger.info('Redis 连接成功'));
+
+// 初始化服务
+const SocketService = require('./services/socketService');
+const AccountManager = require('./services/accountManager');
+const TaskScheduler = require('./services/taskScheduler');
+const WhatsAppService = require('./services/whatsappService');
+const TelegramService = require('./services/telegramService');
+const PluginManager = require('./services/pluginManager');
+const MarketplaceService = require('./services/marketplaceService');
+const AccountIsolationService = require('./services/accountIsolationService');
+const ProxyManager = require('./services/proxyManager');
+const ContainerManager = require('./services/containerManager');
+const BatchRegistrationService = require('./services/batchRegistrationService');
+const MultiLoginService = require('./services/multiLoginService');
+const GroupManagementService = require('./services/groupManagementService');
+const MassMessagingService = require('./services/massMessagingService');
+
+const socketService = new SocketService(io);
+const accountManager = new AccountManager(redisClient, logger);
+const taskScheduler = new TaskScheduler(redisClient, logger);
+const whatsappService = new WhatsAppService(accountManager, socketService, logger);
+const telegramService = new TelegramService(accountManager, socketService, logger);
+const pluginManager = new PluginManager(logger);
+const marketplaceService = new MarketplaceService(logger);
+const accountIsolationService = new AccountIsolationService();
+const proxyManager = new ProxyManager();
+const containerManager = new ContainerManager();
+const batchRegistrationService = new BatchRegistrationService();
+const multiLoginService = new MultiLoginService();
+const groupManagementService = new GroupManagementService();
+const massMessagingService = new MassMessagingService();
+
+// 将服务添加到 app 实例，供路由使用
+app.locals.services = {
+  socketService,
+  accountManager,
+  taskScheduler,
+  whatsappService,
+  telegramService,
+  pluginManager,
+  marketplaceService,
+  accountIsolationService,
+  proxyManager,
+  containerManager,
+  batchRegistrationService,
+  multiLoginService,
+  groupManagementService,
+  massMessagingService,
+  logger,
+  redisClient
 };
 
-// API路由
+// 健康检查路由
+app.get('/health', async (req, res) => {
+  try {
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.version,
+      services: {
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        redis: redisClient.isOpen ? 'connected' : 'disconnected',
+        server: 'running'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 兼容的 /api/health
 app.get('/api/health', (req, res) => {
+  res.redirect(307, '/health');
+});
+
+// API 路由
+app.use('/api/auth', authRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/phone-numbers', phoneNumberRoutes);
+app.use('/api/auto-registration', autoRegistrationRoutes);
+app.use('/api/blue-check', blueCheckRoutes);
+app.use('/api/plugins', pluginRoutes);
+app.use('/api/isolation', accountIsolationRoutes);
+app.use('/api/registration', batchRegistrationRoutes);
+app.use('/api/groups', groupManagementRoutes);
+app.use('/api/mass-messaging', massMessagingRoutes);
+app.use('/api/optimal-panel', optimalPanelRoutes);
+
+// 静态文件服务（支持 frontend/build 或 frontend/dist）
+const frontendBuildPath = path.join(__dirname, 'frontend/build');
+const frontendDistPath = path.join(__dirname, 'frontend/dist');
+
+if (require('fs').existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/assets/') || req.path.startsWith('/static/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else if (require('fs').existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/assets/') || req.path.startsWith('/static/')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  // 未构建前端时的根路径响应
+  app.get('/', (req, res) => {
     res.json({
-        status: 'ok',
-        message: 'Deep360 服务正常运行',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        version: '2.0.0',
-        services: {
-            whatsapp: services.whatsapp.isConnected ? 'connected' : 'disconnected',
-            telegram: services.telegram.isConnected ? 'connected' : 'disconnected'
-        }
+      success: true,
+      message: 'Deep360 API 服务运行正常',
+      version: '1.0.0',
+      timestamp: new Date().toISOString(),
+      endpoints: { health: '/health', api: '/api/*', dashboard: '/dashboard' }
     });
+  });
+}
+
+// 错误处理与 404
+app.use((err, req, res, next) => {
+  logger.error('服务器错误:', err);
+  res.status(500).json({ success: false, message: '服务器内部错误', error: process.env.NODE_ENV === 'development' ? err.message : undefined });
 });
 
-app.get('/api/whatsapp/status', (req, res) => {
-    res.json({
-        connected: services.whatsapp.isConnected,
-        ready: services.whatsapp.isReady,
-        groups: services.whatsapp.groups.length,
-        messages: services.whatsapp.messages.length,
-        stats: services.whatsapp.stats
-    });
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: '接口不存在' });
 });
 
-app.post('/api/whatsapp/send', (req, res) => {
-    const { to, message } = req.body;
-    if (!to || !message) {
-        return res.status(400).json({ error: '缺少必要参数' });
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+  try {
+    logger.info('🚀 正在启动 Deep360 系统...');
+    logger.info('📦 连接数据库...');
+    await connectDB(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360');
+
+    logger.info('🔴 连接Redis...');
+    await redisClient.connect();
+
+    logger.info('⚙️ 初始化服务...');
+    try {
+      await socketService.initialize?.();
+      await accountManager.initialize?.();
+      await taskScheduler.initialize?.();
+      await whatsappService.initialize?.();
+      await telegramService.initialize?.();
+      await pluginManager.initialize?.();
+      await marketplaceService.initialize?.();
+      await accountIsolationService.initialize?.();
+      await batchRegistrationService.initialize?.();
+      await multiLoginService.initialize?.();
+      await groupManagementService.initialize?.();
+      await massMessagingService.initialize?.();
+      logger.info('✅ 所有服务初始化完成');
+    } catch (serviceError) {
+      logger.warn('⚠️ 部分服务初始化失败，但系统可以继续运行:', serviceError.message);
     }
-    services.whatsapp.messages.push({
-        id: Date.now(),
-        to,
-        message,
-        timestamp: new Date().toISOString(),
-        status: 'sent'
+
+    logger.info('⏰ 启动任务调度器...');
+    await taskScheduler.start?.();
+
+    server.listen(PORT, () => {
+      logger.info(`🚀 Deep360 SaaS 平台启动成功`);
+      logger.info(`📱 群控系统运行在端口 ${PORT}`);
+      logger.info(`🌐 访问地址: http://localhost:${PORT}`);
     });
-    res.json({ success: true, messageId: Date.now() });
+  } catch (error) {
+    logger.error('❌ 服务器启动失败:', error);
+    process.exit(1);
+  }
+}
+
+// 优雅关闭
+process.on('SIGTERM', async () => {
+  logger.info('收到 SIGTERM 信号，正在优雅关闭服务器...');
+  server.close(() => logger.info('HTTP 服务器已关闭'));
+  try { await redisClient.quit(); } catch {}
+  try { await mongoose.connection.close(); } catch {}
+  process.exit(0);
 });
 
-app.get('/api/telegram/status', (req, res) => {
-    res.json({
-        connected: services.telegram.isConnected,
-        groups: services.telegram.groups.length,
-        messages: services.telegram.messages.length,
-        stats: services.telegram.stats
-    });
+process.on('SIGINT', async () => {
+  logger.info('收到 SIGINT 信号，正在优雅关闭服务器...');
+  server.close(() => logger.info('HTTP 服务器已关闭'));
+  try { await redisClient.quit(); } catch {}
+  try { await mongoose.connection.close(); } catch {}
+  process.exit(0);
 });
 
-app.post('/api/telegram/send', (req, res) => {
-    const { to, message } = req.body;
-    if (!to || !message) {
-        return res.status(400).json({ error: '缺少必要参数' });
-    }
-    services.telegram.messages.push({
-        id: Date.now(),
-        to,
-        message,
-        timestamp: new Date().toISOString(),
-        status: 'sent'
-    });
-    res.json({ success: true, messageId: Date.now() });
-});
+// 仅在直接运行时启动服务器（测试时仅导出 app）
+if (require.main === module && process.env.SKIP_SERVER_START !== '1') {
+  startServer();
+}
 
-app.get('/api/groups', (req, res) => {
-    const allGroups = [
-        ...services.whatsapp.groups.map(g => ({ ...g, platform: 'whatsapp' })),
-        ...services.telegram.groups.map(g => ({ ...g, platform: 'telegram' }))
-    ];
-    res.json({ groups: allGroups });
-});
-
-app.post('/api/groups', (req, res) => {
-    const { name, platform, type } = req.body;
-    if (!name || !platform) {
-        return res.status(400).json({ error: '缺少必要参数' });
-    }
-    const newGroup = {
-        id: Date.now(),
-        name,
-        members: 0,
-        type: type || 'general',
-        createdAt: new Date().toISOString()
-    };
-    if (platform === 'whatsapp') {
-        services.whatsapp.groups.push(newGroup);
-    } else if (platform === 'telegram') {
-        services.telegram.groups.push(newGroup);
-    } else {
-        return res.status(400).json({ error: '无效的平台类型' });
-    }
-    res.json({ success: true, group: newGroup });
-});
-
-app.get('/api/stats', (req, res) => {
-    const stats = {
-        overview: {
-            totalGroups: services.whatsapp.groups.length + services.telegram.groups.length,
-            totalMessages: services.whatsapp.messages.length + services.telegram.messages.length,
-            totalMembers: 
-                services.whatsapp.groups.reduce((sum, g) => sum + g.members, 0) +
-                services.telegram.groups.reduce((sum, g) => sum + g.members, 0)
-        },
-        platforms: {
-            whatsapp: {
-                groups: services.whatsapp.groups.length,
-                messages: services.whatsapp.messages.length,
-                members: services.whatsapp.groups.reduce((sum, g) => sum + g.members, 0),
-                ...services.whatsapp.stats
-            },
-            telegram: {
-                groups: services.telegram.groups.length,
-                messages: services.telegram.messages.length,
-                members: services.telegram.groups.reduce((sum, g) => sum + g.members, 0),
-                ...services.telegram.stats
-            }
-        }
-    };
-    res.json(stats);
-});
-
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/build/index.html'));
-});
-
-app.listen(PORT, () => {
-    console.log(`
-🚀 Deep360 管理系统启动成功
-=======================
-📡 端口: ${PORT}
-🌐 地址: http://localhost:${PORT}
-📊 状态: http://localhost:${PORT}/api/health
-⚡ 模式: 生产环境
-    `);
-});
-
-process.on('SIGTERM', () => {
-    console.log('收到 SIGTERM 信号，准备关闭服务...');
-    process.exit(0);
-});
-
-process.on('SIGINT', () => {
-    console.log('收到 SIGINT 信号，准备关闭服务...');
-    process.exit(0);
-});
+module.exports = app;
