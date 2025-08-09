@@ -30,9 +30,11 @@
     "helmet": "^6.2.0",
     "joi": "^17.9.1",
     "jsonwebtoken": "^9.0.0",
+    "mongodb-memory-server": "^10.2.0",
     "mongoose": "^7.8.7",
     "morgan": "^1.10.1",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "node-fetch": "^3.3.1",
     "puppeteer": "^24.16.0",
     "qrcode": "^1.5.4",
@@ -71,5 +73,18 @@
     "global"
   ],
   "author": "Deep360 Team",
-  "license": "MIT"
+  "license": "MIT",
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "testTimeout": 30000,
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/deploy-package/"
+    ]
+  }
 }

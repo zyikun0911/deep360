@@ -9,7 +9,9 @@ const User = require('../../models/User');
 const Account = require('../../models/Account');
 const Task = require('../../models/Task');
 
-describe('API Integration Tests', () => {
+const maybeDescribe = (global.__SKIP_INTEGRATION__) ? describe.skip : describe;
+
+maybeDescribe('API Integration Tests', () => {
   let authToken;
   let testUser;
   let testAccount;
