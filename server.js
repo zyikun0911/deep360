@@ -81,9 +81,10 @@ app.use('/uploads', express.static('uploads'));
 
 // 移除启动前的自动数据库连接，统一在 startServer 中处理
 
-// Redis 连接
+// Redis 连接（设置较小的连接超时，避免阻塞启动）
 const redisClient = redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  socket: { connectTimeout: 1000 }
 });
 
 redisClient.on('error', (err) => logger.error('Redis 连接错误:', err));
@@ -221,6 +222,7 @@ async function startServer() {
     logger.info('🔴 连接Redis...');
     let redisAvailable = true;
     try {
+      // 等待 Redis 连接，若超时/失败则降级
       await redisClient.connect();
     } catch (rErr) {
       redisAvailable = false;
