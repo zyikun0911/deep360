@@ -95,13 +95,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static('uploads'));
 
-// 数据库连接
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => logger.info('MongoDB 连接成功'))
-.catch(err => logger.error('MongoDB 连接失败:', err));
+// 数据库连接（在启动时进行，测试环境下不自动连接）
+if (require.main === module && process.env.NODE_ENV !== 'test') {
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/deep360', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => logger.info('MongoDB 连接成功'))
+  .catch(err => logger.error('MongoDB 连接失败:', err));
+}
 
 // Redis 连接
 const redisClient = redis.createClient({
@@ -364,4 +366,8 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-startServer();
+if (require.main === module && process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+module.exports = app;
