@@ -2,11 +2,7 @@
  * PluginManager 单元测试
  */
 
-const PluginManager = require('../../../services/pluginManager');
-const fs = require('fs').promises;
-const path = require('path');
-
-// Mock dependencies
+// Mock dependencies first
 jest.mock('fs', () => ({
   promises: {
     mkdir: jest.fn(),
@@ -19,6 +15,10 @@ jest.mock('fs', () => ({
 }));
 
 jest.mock('vm');
+
+const PluginManager = require('../../../services/pluginManager');
+const fs = require('fs').promises;
+const path = require('path');
 
 describe('PluginManager', () => {
   let pluginManager;
