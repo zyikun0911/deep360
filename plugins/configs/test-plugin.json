@@ -1,0 +1,11 @@
+{
+  "id": "test-plugin",
+  "name": "Test Plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "A test plugin",
+  "hooks": [
+    "test.hook"
+  ],
+  "enabled": false
+}
